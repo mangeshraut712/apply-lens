@@ -1,0 +1,19 @@
+{
+  "name": "apply-lens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "See a job posting the way a real person would, then score it against the company's live product.",
+  "scripts": {
+    "start": "tsx index.ts",
+    "lens": "tsx index.ts"
+  },
+  "dependencies": {
+    "@solarisdk/browser": "^0.1.1",
+    "@solarisdk/sdk": "^0.1.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
