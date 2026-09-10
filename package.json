@@ -6,13 +6,16 @@
   "description": "See a job posting the way a real person would, then score it against the company's live product.",
   "scripts": {
     "start": "tsx index.ts",
-    "lens": "tsx index.ts"
+    "lens": "tsx index.ts",
+    "score:fixtures": "mkdir -p /tmp/apply-lens && cp docs/fixtures/page-*.json /tmp/apply-lens/ && python3 src/score.py",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@solarisdk/browser": "^0.1.1",
     "@solarisdk/sdk": "^0.1.2"
   },
   "devDependencies": {
+    "@types/node": "^22.20.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

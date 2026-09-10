@@ -1,0 +1,6 @@
+{
+  "url": "https://docs.getsolari.com/sdk",
+  "title": "Solari TypeScript SDK",
+  "text": "npm install @solarisdk/browser @solarisdk/sdk\n\nconst solari = new Solari({ apiKey })\nconst browser = await solari.launch({ stealth: true, proxy: \"us\", recording: true })\nconst page = await browser.newPage()\nawait page.goto(\"https://example.com\")\n\nSandbox: python3, files.write, commands.run. Playwright, Puppeteer, Chrome, CDP.\nAgents that browse. Session recording. Stealth plus US proxy.\n",
+  "links": []
+}
