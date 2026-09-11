@@ -1,0 +1,10 @@
+{
+  "url": "https://jobs.example.com/staff-platform-engineer",
+  "title": "Staff Platform Engineer — stealth AI infra (Series B)",
+  "text": "We're a world class, fast paced team looking for a 10x ninja / rockstar who will disrupt infrastructure.\n\nYou will:\n- Design Kubernetes clusters and Kafka pipelines at global scale\n- Own Terraform, AWS, GCP, and Azure (yes all three)\n- Ship GraphQL and gRPC gateways\n- Mentor across Java, Spring, and Django monoliths we still run\n- Unlimited PTO. Synergy. Come build the future.\n\nMust have: Kubernetes, Kafka, Terraform, Java, Django, GraphQL.\nNice to have: MCP, Playwright, TypeScript.\n\nApply if you live and breathe distributed systems.\n",
+  "links": [
+    "https://docs.getsolari.com",
+    "https://docs.getsolari.com/product",
+    "https://docs.getsolari.com/sdk"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "url": "https://docs.getsolari.com",
+  "title": "Solari docs — cloud browsers and sandboxes",
+  "text": "Solari gives agents a stealth cloud browser and a microVM sandbox.\n\nUse the TypeScript SDK (@solarisdk/browser, @solarisdk/sdk) with Playwright-compatible APIs.\nLaunch Chrome over CDP with residential US proxy, session recording, and stealth.\n\nSandboxes run Python 3. Score untrusted code off your laptop.\nMCP-friendly. RAG over captured pages. LLM tools that actually see the live DOM.\n\nThe product is browsers plus sandboxes for agents — not a multi-cloud control plane.\n",
+  "links": [
+    "https://docs.getsolari.com/sdk"
+  ]
+}
