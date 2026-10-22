@@ -5,3 +5,6 @@ dist/
 reports/
 *.log
 .DS_Store
+# Local agent tooling
+.agents/
+skills-lock.json
