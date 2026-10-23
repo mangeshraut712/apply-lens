@@ -141,6 +141,8 @@ def test_fixture_report_matches_checked_in_capture() -> None:
     markdown = render_markdown(report)
     assert markdown.startswith("# Apply Lens report\n")
     assert "**Support score:** 7.8  \n" in markdown
+    assert "## Buzzwords in the posting\n" in markdown
+    assert "world class" in markdown
     assert "roughly agree" not in markdown
 
 
@@ -482,6 +484,86 @@ def test_cli_subprocess_rejects_a_missing_directory(tmp_path: Path) -> None:
     )
     assert completed.returncode != 0
     assert "not found" in completed.stderr
+
+
+def test_credentials_are_removed_from_report_urls() -> None:
+    report = build_report(
+        [
+            _page("https://user:s3cret@jobs.example/role", "Role", "python kubernetes"),
+            _page("https://example.com/docs", "Docs", "python"),
+        ]
+    )
+    assert report["job_url"] == "https://jobs.example/role"
+    assert "s3cret" not in render_markdown(report)
+
+
+def test_host_spelling_and_default_port_do_not_double_count_a_page() -> None:
+    report = build_report(
+        [
+            _page("https://jobs.example/role", "Role", "Kubernetes and Kafka"),
+            _page("HTTPS://EXAMPLE.com:443/docs/", "Docs", "Python sandbox"),
+            _page("https://example.com/docs", "Again", "extra python that is not a second page"),
+        ]
+    )
+    assert [page["url"] for page in report["pages_captured"]] == [
+        "https://jobs.example/role",
+        "HTTPS://EXAMPLE.com:443/docs/",
+    ]
+    assert report["product_tech"] == ["python", "sandbox"]
+
+
+def test_bidi_controls_cannot_spoof_the_title() -> None:
+    report = build_report(
+        [
+            _page("https://jobs.example/role", "Role\u202e\u202d hidden", "python"),
+            _page("https://example.com/docs", "Docs", "python"),
+        ]
+    )
+    assert "\u202e" not in report["job_title"]
+    assert "\u202d" not in report["job_title"]
+    assert "hidden" in report["job_title"]
+    assert "\u202e" not in render_markdown(report)
+
+
+def test_duplicate_page_index_is_rejected(tmp_path: Path) -> None:
+    _write_page(tmp_path, "page-0.json", _page("https://jobs.example/role", "Role", "python"))
+    _write_page(tmp_path, "page-00.json", _page("https://example.com/docs", "Docs", "python"))
+    with pytest.raises(ScoreError, match="duplicate page index"):
+        load_pages(tmp_path)
+
+
+def test_score_fixtures_script_ignores_a_planted_shared_directory(tmp_path: Path) -> None:
+    shared = Path("/tmp/apply-lens")  # noqa: S108
+    aside = tmp_path / "aside"
+    moved = False
+    if shared.exists() or shared.is_symlink():
+        shared.rename(aside)
+        moved = True
+    shared.mkdir()
+    (shared / "page-99.json").write_text(
+        json.dumps(_page("https://evil.example/planted", "x", "kubernetes")),
+        encoding="utf-8",
+    )
+    (shared / "secret.txt").write_text("do-not-touch", encoding="utf-8")
+    try:
+        completed = subprocess.run(  # noqa: S603
+            ["sh", str(ROOT / "scripts" / "score-fixtures.sh")],  # noqa: S607
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+        )
+        assert completed.returncode == 0, completed.stderr
+        assert "Support score:** 7.8" in completed.stdout
+        assert "evil.example" not in completed.stdout
+        assert (shared / "secret.txt").read_text(encoding="utf-8") == "do-not-touch"
+        assert not (shared / "report.json").exists()
+    finally:
+        for child in shared.iterdir():
+            child.unlink()
+        shared.rmdir()
+        if moved:
+            aside.rename(shared)
 
 
 def test_unreadable_directory_is_reported(tmp_path: Path) -> None:

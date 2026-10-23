@@ -2,8 +2,8 @@
  * Apply Lens — job posts lie in the abstract. Live product pages do not.
  *
  * A stealth Solari browser opens the posting the way a candidate would,
- * follows a few same-origin product/docs links, then a Solari sandbox
- * scores the JD against what the company actually ships.
+ * opens the company site, follows a few product/docs links there, then a
+ * Solari sandbox scores the JD against what the company actually ships.
  *
  *   export SOLARI_API_KEY=slr_live_...
  *   npx tsx index.ts --url https://docs.getsolari.com
@@ -14,7 +14,14 @@ import { fileURLToPath } from "node:url"
 import { Solari } from "@solarisdk/browser"
 import { SolariClient } from "@solarisdk/sdk"
 import { readArgs } from "./src/args.js"
-import { classifyRequest, oneLine, redactSecrets, shouldFollow, stripHash } from "./src/net.js"
+import {
+  assertLandedUrl,
+  assertPublicHttpUrl,
+  classifyRequest,
+  oneLine,
+  planFollows,
+  redactSecrets,
+} from "./src/net.js"
 
 interface CapturedPage {
   url: string
@@ -74,6 +81,7 @@ function asExtracted(value: unknown): { text: string; links: string[] } {
 
 async function capture(page: SolariPage, url: string): Promise<CapturedPage> {
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS })
+  const landed = assertLandedUrl(url, page.url())
   const title = await page.title()
   const extracted = asExtracted(
     await page.evaluate(
@@ -99,7 +107,7 @@ async function capture(page: SolariPage, url: string): Promise<CapturedPage> {
     ),
   )
   return {
-    url: oneLine(url, undefined, 2048),
+    url: oneLine(landed, undefined, 2048),
     title: oneLine(title, undefined, 300),
     text: extracted.text,
     links: extracted.links,
@@ -137,7 +145,7 @@ function parseReport(raw: string): unknown {
 
 async function main(): Promise<void> {
   const apiKey = apiKeyFromEnv()
-  const { jobUrl, companyUrl } = readArgs(process.argv)
+  const args = readArgs(process.argv.slice(2))
   const here = dirname(fileURLToPath(import.meta.url))
   const scorePy = readFileSync(join(here, "src/score.py"), "utf8")
 
@@ -156,29 +164,23 @@ async function main(): Promise<void> {
     page.setDefaultNavigationTimeout(NAV_TIMEOUT_MS)
     page.setDefaultTimeout(NAV_TIMEOUT_MS)
     await installPublicOnlyGuard(page)
-    const job = await capture(page, jobUrl)
+    const job = await capture(page, args.jobUrl)
     pages.push(job)
-
-    const origin = new URL(jobUrl).origin
-    const next = new Set<string>()
-    if (companyUrl !== jobUrl) {
-      next.add(companyUrl)
-    }
-    for (const href of job.links) {
-      if (!shouldFollow(href, origin)) {
-        continue
-      }
-      let cleaned: string
+    const companyUrl = args.companyFromFlag
+      ? args.companyUrl
+      : assertPublicHttpUrl(new URL(job.url).origin, "--company")
+    const seeded: CapturedPage[] = [job]
+    if (companyUrl !== job.url) {
       try {
-        cleaned = stripHash(href)
-      } catch {
-        continue
-      }
-      if (cleaned !== jobUrl) {
-        next.add(cleaned)
+        const company = await capture(page, companyUrl)
+        pages.push(company)
+        seeded.push(company)
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "capture failed"
+        console.error(`skip ${oneLine(companyUrl, apiKey)} ${oneLine(message, apiKey)}`)
       }
     }
-    for (const href of [...next].slice(0, MAX_FOLLOWS)) {
+    for (const href of planFollows(job.url, companyUrl, seeded, MAX_FOLLOWS)) {
       try {
         pages.push(await capture(page, href))
       } catch (err: unknown) {
@@ -187,7 +189,9 @@ async function main(): Promise<void> {
       }
     }
     console.log(`session: ${oneLine(browser.id, apiKey)}`)
-    console.log(`pages  : ${pages.map((item) => oneLine(item.url, apiKey)).join("\n         ")}`)
+    console.log(
+      `pages  : ${pages.map((item) => oneLine(item.url, apiKey, 2048)).join("\n         ")}`,
+    )
   } finally {
     const open = browser
     if (open) {
@@ -198,7 +202,7 @@ async function main(): Promise<void> {
 
   const sandbox = await cloud.sandboxes.create({
     template: "base",
-    timeoutMs: 5 * 60_000,
+    idleTimeoutMs: 5 * 60_000,
   })
   try {
     await sandbox.connect()
