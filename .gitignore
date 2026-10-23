@@ -5,6 +5,11 @@ dist/
 reports/
 *.log
 .DS_Store
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.py[cod]
 # Local agent tooling
 .agents/
 skills-lock.json
