@@ -8,7 +8,8 @@
     "start": "tsx index.ts",
     "lens": "tsx index.ts",
     "score:fixtures": "mkdir -p /tmp/apply-lens && cp docs/fixtures/page-*.json /tmp/apply-lens/ && python3 src/score.py",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:node": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@solarisdk/browser": "^0.1.1",
