@@ -15,8 +15,10 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict
+from urllib.parse import urlsplit, urlunsplit
 
-# Sandbox contract: index.ts and `npm run score:fixtures` use this directory.
+# Sandbox contract: index.ts writes captures here. `npm run score:fixtures`
+# passes a private --root and does not use this shared path.
 _DEFAULT_ROOT = "/tmp/apply-lens"  # noqa: S108
 MAX_PAGE_BYTES = 512 * 1024
 MAX_TEXT_CHARS = 24_000
@@ -146,7 +148,9 @@ TECH = {
 _SHORT_TECH = frozenset({"go", "c#", "f#"})
 _TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9.+#-]{1,}")
 _PAGE_NAME = re.compile(r"page-(\d+)\.json")
-_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]+")
+_CONTROL_RE = re.compile(
+    r"[\x00-\x1f\x7f\u0080-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]+"
+)
 _DASHES = str.maketrans(
     {
         "\u2010": " ",
@@ -249,6 +253,9 @@ def load_pages(root: Path) -> list[CapturedPage]:
     if not matches:
         raise ScoreError("no captured pages")
     matches.sort()
+    indexes = [index for index, _name in matches]
+    if len(indexes) != len(set(indexes)):
+        raise ScoreError("duplicate page index")
     if len(matches) > MAX_PAGES:
         raise ScoreError(f"too many captured pages ({len(matches)}); limit is {MAX_PAGES}")
     pages: list[CapturedPage] = []
@@ -325,6 +332,9 @@ def render_markdown(report: Report) -> str:
         "",
         "## On the site, missing from the JD",
         ", ".join(report["on_site_not_in_jd"]) or "_(none)_",
+        "",
+        "## Buzzwords in the posting",
+        ", ".join(report["buzzwords"]) or "_(none)_",
         "",
         "## Interview questions from the live product",
     ]
@@ -419,7 +429,7 @@ def _normalize_page(raw: object, name: str) -> CapturedPage:
     if len(text) > MAX_TEXT_CHARS:
         text = text[:MAX_TEXT_CHARS]
     return {
-        "url": _one_line(_field_str(raw.get("url"), name, "url")),
+        "url": _public_url(_field_str(raw.get("url"), name, "url")),
         "title": _one_line(_field_str(raw.get("title"), name, "title")),
         "text": text,
     }
@@ -437,7 +447,7 @@ def _dedupe_pages(pages: list[CapturedPage]) -> list[CapturedPage]:
     seen: set[str] = set()
     unique: list[CapturedPage] = []
     for index, page in enumerate(pages):
-        key = page["url"].strip().rstrip("/")
+        key = _canonical_url_key(page["url"])
         if not key:
             key = f"\0{index}"
         if key in seen:
@@ -445,6 +455,45 @@ def _dedupe_pages(pages: list[CapturedPage]) -> list[CapturedPage]:
         seen.add(key)
         unique.append(page)
     return unique
+
+
+def _public_url(value: str) -> str:
+    """Drop credentials so a capture cannot echo a password into the report."""
+    cleaned = _one_line(value)
+    try:
+        parts = urlsplit(cleaned)
+    except ValueError:
+        return cleaned
+    if parts.username is None and parts.password is None:
+        return cleaned
+    if parts.scheme not in {"http", "https"} or parts.hostname is None:
+        return cleaned
+    host = f"[{parts.hostname}]" if ":" in parts.hostname else parts.hostname
+    netloc = host if parts.port is None else f"{host}:{parts.port}"
+    return _one_line(urlunsplit((parts.scheme, netloc, parts.path, parts.query, "")))
+
+
+def _canonical_url_key(url: str) -> str:
+    """Identity for dedupe: host case, default ports, and a trailing slash."""
+    cleaned = url.strip()
+    try:
+        parts = urlsplit(cleaned)
+    except ValueError:
+        return cleaned.rstrip("/")
+    if parts.scheme not in {"http", "https"} or parts.hostname is None:
+        return cleaned.rstrip("/")
+    host = parts.hostname.lower()
+    default_port = (parts.scheme == "http" and parts.port in {None, 80}) or (
+        parts.scheme == "https" and parts.port in {None, 443}
+    )
+    if ":" in host:
+        host = f"[{host}]"
+    netloc = host if default_port else f"{host}:{parts.port}"
+    path = parts.path.rstrip("/")
+    key = f"{parts.scheme.lower()}://{netloc}{path}"
+    if parts.query:
+        key = f"{key}?{parts.query}"
+    return key
 
 
 def _one_line(value: str, limit: int = 300) -> str:

@@ -7,13 +7,13 @@
   "scripts": {
     "start": "tsx index.ts",
     "lens": "tsx index.ts",
-    "score:fixtures": "mkdir -p /tmp/apply-lens && cp docs/fixtures/page-*.json /tmp/apply-lens/ && python3 src/score.py",
+    "score:fixtures": "sh scripts/score-fixtures.sh",
     "typecheck": "tsc --noEmit",
     "test:node": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
-    "@solarisdk/browser": "^0.1.1",
-    "@solarisdk/sdk": "^0.1.2"
+    "@solarisdk/browser": "^0.1.6",
+    "@solarisdk/sdk": "^0.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.2",
