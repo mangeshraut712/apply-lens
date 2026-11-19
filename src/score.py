@@ -469,7 +469,14 @@ def _public_url(value: str) -> str:
     if parts.scheme not in {"http", "https"} or parts.hostname is None:
         return cleaned
     host = f"[{parts.hostname}]" if ":" in parts.hostname else parts.hostname
-    netloc = host if parts.port is None else f"{host}:{parts.port}"
+    try:
+        port = parts.port
+    except ValueError:
+        # urlsplit accepts ":abc" or ":99999" and only .port raises. Keep the
+        # authority as written, minus the credentials.
+        netloc = parts.netloc.rpartition("@")[2]
+    else:
+        netloc = host if port is None else f"{host}:{port}"
     return _one_line(urlunsplit((parts.scheme, netloc, parts.path, parts.query, "")))
 
 
@@ -482,13 +489,18 @@ def _canonical_url_key(url: str) -> str:
         return cleaned.rstrip("/")
     if parts.scheme not in {"http", "https"} or parts.hostname is None:
         return cleaned.rstrip("/")
+    try:
+        port = parts.port
+    except ValueError:
+        # An unparseable port cannot be normalized; treat the URL as opaque.
+        return cleaned.rstrip("/")
     host = parts.hostname.lower()
-    default_port = (parts.scheme == "http" and parts.port in {None, 80}) or (
-        parts.scheme == "https" and parts.port in {None, 443}
+    default_port = (parts.scheme == "http" and port in {None, 80}) or (
+        parts.scheme == "https" and port in {None, 443}
     )
     if ":" in host:
         host = f"[{host}]"
-    netloc = host if default_port else f"{host}:{parts.port}"
+    netloc = host if default_port else f"{host}:{port}"
     path = parts.path.rstrip("/")
     key = f"{parts.scheme.lower()}://{netloc}{path}"
     if parts.query:

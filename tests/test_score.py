@@ -578,3 +578,23 @@ def test_unreadable_directory_is_reported(tmp_path: Path) -> None:
             load_pages(blocked)
     finally:
         blocked.chmod(0o700)
+
+
+@pytest.mark.parametrize("port", ["abc", "99999"])
+def test_unparseable_port_does_not_crash_scoring(port: str) -> None:
+    report = build_report(
+        [
+            _page("https://jobs.example/role", "Role", "python"),
+            _page(f"https://example.com:{port}/docs", "Docs", "python"),
+        ]
+    )
+    assert [page["url"] for page in report["pages_captured"]] == [
+        "https://jobs.example/role",
+        f"https://example.com:{port}/docs",
+    ]
+
+
+def test_unparseable_port_still_drops_credentials() -> None:
+    from score import _public_url
+
+    assert _public_url("https://user:secret@example.com:abc/x") == "https://example.com:abc/x"
