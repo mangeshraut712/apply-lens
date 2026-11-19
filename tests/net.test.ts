@@ -223,6 +223,15 @@ describe("shouldFollow", () => {
     assert.equal(shouldFollow("https://user:pass@docs.example.com/docs", ORIGIN), false)
     assert.equal(shouldFollow("javascript:alert(1)", ORIGIN), false)
   })
+
+  it("matches hints at word starts, not inside unrelated words", () => {
+    assert.equal(shouldFollow("https://docs.example.com/api-reference", ORIGIN), true)
+    assert.equal(shouldFollow("https://docs.example.com/engineering-blog/post", ORIGIN), true)
+    assert.equal(shouldFollow("https://docs.example.com/careers", ORIGIN), true)
+    assert.equal(shouldFollow("https://docs.example.com/capital", ORIGIN), false)
+    assert.equal(shouldFollow("https://docs.example.com/therapy", ORIGIN), false)
+    assert.equal(shouldFollow("https://docs.example.com/rapid-response", ORIGIN), false)
+  })
 })
 
 describe("redaction and args", () => {

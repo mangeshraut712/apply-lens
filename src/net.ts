@@ -181,8 +181,14 @@ export function shouldFollow(href: string, origin: string): boolean {
     }
     throw err
   }
-  const segments = parsed.pathname.toLowerCase().split("/").filter((segment) => segment.length > 0)
-  return FOLLOW_HINTS.some((hint) => segments.some((segment) => segment.includes(hint)))
+  // Match a hint at the start of a word ("docs", "api-reference",
+  // "engineering-blog"), not anywhere inside one: "api" must not pick up
+  // "/capital" or "/therapy" and spend the follow budget on them.
+  const words = parsed.pathname
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length > 0)
+  return FOLLOW_HINTS.some((hint) => words.some((word) => word.startsWith(hint)))
 }
 
 /**
