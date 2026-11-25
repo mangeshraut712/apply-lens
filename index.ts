@@ -22,6 +22,7 @@ import {
   planFollows,
   redactSecrets,
 } from "./src/net.js"
+import { parseReport } from "./src/report.js"
 
 interface CapturedPage {
   url: string
@@ -38,7 +39,6 @@ const MAX_LINKS = 100
 const MAX_FOLLOWS = 3
 const NAV_TIMEOUT_MS = 30_000
 const SCORE_TIMEOUT_MS = 60_000
-const MAX_REPORT_CHARS = 200_000
 
 function apiKeyFromEnv(): string {
   const apiKey = process.env.SOLARI_API_KEY?.trim()
@@ -125,22 +125,6 @@ async function closeQuietly(
     const message = err instanceof Error ? err.message : "close failed"
     console.error(`${label}: ${oneLine(message, secret)}`)
   }
-}
-
-function parseReport(raw: string): unknown {
-  if (raw.length > MAX_REPORT_CHARS) {
-    throw new Error("sandbox report is too large")
-  }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    throw new Error("sandbox report was not valid JSON")
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    throw new Error("sandbox report was not a JSON object")
-  }
-  return parsed
 }
 
 async function main(): Promise<void> {
