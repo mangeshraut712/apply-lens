@@ -247,7 +247,8 @@ export function redactSecrets(message: string, secret: string | undefined): stri
   if (secret !== undefined && secret.length > 0) {
     out = out.split(secret).join("[redacted]")
   }
-  return out.replace(/\bslr_[A-Za-z0-9_-]{6,}\b/g, "[redacted]")
+  // No leading \b: stripped characters can glue a key onto a preceding word.
+  return out.replace(/slr_[A-Za-z0-9_-]{6,}/g, "[redacted]")
 }
 
 const ANSI_OSC = /\u001b\][^\u0007]*(?:\u0007|\u001b\\)/g
@@ -256,9 +257,10 @@ const UNSAFE_CHARS =
   /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g
 
 export function oneLine(message: string, secret?: string, limit = 500): string {
-  // Strip escapes and control characters first, then redact: removing them
-  // afterwards could re-join a key that they had split.
-  const clean = message
+  // Redact before and after stripping: before, so an escape sequence can't
+  // swallow the first character of an intact key; after, so stripped control
+  // characters can't re-join a key they had split.
+  const clean = redactSecrets(message, secret)
     .replace(ANSI_OSC, "")
     .replace(ANSI_CSI, "")
     .replace(/[\r\n\t\u2028\u2029]+/g, " ")
