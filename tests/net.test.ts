@@ -138,6 +138,16 @@ describe("assertLandedUrl", () => {
   })
 })
 
+describe("oneLine", () => {
+  it("never re-emits a secret that strippable characters split apart", () => {
+    const secret = "slr_live_abcdefgh1234567890"
+    for (const splitter of ["\u0000", "\u001b[0m", "\u200b"]) {
+      const split = `${secret.slice(0, 9)}${splitter}${secret.slice(9)}`
+      assert.equal(oneLine(`capture failed near ${split}`, secret).includes(secret), false)
+    }
+  })
+})
+
 describe("planFollows", () => {
   it("follows company-site links from a job board and skips the board", () => {
     const job = "https://jobs.example.com/staff-platform-engineer"

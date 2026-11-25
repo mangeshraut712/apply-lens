@@ -256,11 +256,14 @@ const UNSAFE_CHARS =
   /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g
 
 export function oneLine(message: string, secret?: string, limit = 500): string {
-  const flat = redactSecrets(message, secret)
+  // Strip escapes and control characters first, then redact: removing them
+  // afterwards could re-join a key that they had split.
+  const clean = message
     .replace(ANSI_OSC, "")
     .replace(ANSI_CSI, "")
     .replace(/[\r\n\t\u2028\u2029]+/g, " ")
     .replace(UNSAFE_CHARS, "")
+  const flat = redactSecrets(clean, secret)
   return flat.length > limit ? flat.slice(0, limit) : flat
 }
 
