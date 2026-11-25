@@ -10,7 +10,7 @@ py-serializable==2.1.0
 defusedxml==0.7.1
 sortedcontainers==2.4.0
 typing_extensions==4.16.0
-filelock==4.2.4
+filelock==4.3.1
 idna==3.20
 iniconfig==2.3.1
 markdown-it-py==4.2.0
