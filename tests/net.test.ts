@@ -138,6 +138,33 @@ describe("assertLandedUrl", () => {
   })
 })
 
+describe("oneLine", () => {
+  it("never re-emits a secret that strippable characters split apart", () => {
+    const secret = "slr_live_abcdefgh1234567890"
+    for (const splitter of ["\u0000", "\u001b[0m", "\u200b"]) {
+      const split = `${secret.slice(0, 9)}${splitter}${secret.slice(9)}`
+      assert.equal(oneLine(`capture failed near ${split}`, secret).includes(secret), false)
+    }
+  })
+
+  it("redacts an intact key that an escape introducer would otherwise swallow", () => {
+    const secret = "slr_live_abcdefgh1234567890"
+    for (const known of [secret, undefined]) {
+      const out = oneLine(`bad flag \u001b[${secret}`, known)
+      assert.equal(out.includes(secret.slice(1)), false, `leaked with secret=${known}`)
+    }
+  })
+
+  it("redacts a key-shaped value glued to a word by stripped characters", () => {
+    const key = "slr_live_abcdefgh1234567890"
+    for (const glue of ["\u200b", "\u0000", "\u001b[0m"]) {
+      const out = oneLine(`unknown option --token${glue}${key}`)
+      assert.equal(out.includes(key), false, `leaked through ${JSON.stringify(glue)}`)
+      assert.equal(out, "unknown option --token[redacted]")
+    }
+  })
+})
+
 describe("planFollows", () => {
   it("follows company-site links from a job board and skips the board", () => {
     const job = "https://jobs.example.com/staff-platform-engineer"
